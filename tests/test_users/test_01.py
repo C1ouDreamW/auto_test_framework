@@ -12,7 +12,7 @@ cases = data['cases']
 def test_login(auth_header,case):
     url = api_config['url']
     method = api_config['method']
-    resp = requests.request(method,url,headers=auth_header)
+    resp = requests.request(method,url,headers=auth_header) if case['is_login'] else requests.request(method, url)
     for key, expected in case["validate"].items():
         actual = resp.json().get(key)
         assert actual == expected
