@@ -1,7 +1,7 @@
 - api_name: 获取用户个人信息
   request:
     method: GET
-    url: http://localhost:8080/api/v1/users/me
+    url: /users/me
   cases:
     - case_name: 成功获取用户个人信息
       is_login: true

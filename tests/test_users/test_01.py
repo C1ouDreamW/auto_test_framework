@@ -1,5 +1,6 @@
 import pytest
-import requests
+
+from base.client import ApiClient
 from common.read_yaml import read_yaml
 
 data = read_yaml("tests/test_users/test_01.yaml")[0]
@@ -7,14 +8,10 @@ api_config = data['request']
 cases = data['cases']
 
 # ----- login -----
-@pytest.mark.parametrize("case", cases)
+@pytest.mark.parametrize("case", cases,ids=[i['case_name'] for i in cases])
 @pytest.mark.login
-def test_login(auth_header,case):
-    url = api_config['url']
-    method = api_config['method']
-    resp = requests.request(method,url,headers=auth_header) if case['is_login'] else requests.request(method, url)
-    for key, expected in case["validate"].items():
-        actual = resp.json().get(key)
-        assert actual == expected
+def test_login(case,set_base_url,auth_header):
+    api_client = ApiClient(set_base_url)
+    api_client.call(api_config,case,auth_header)
 
 
