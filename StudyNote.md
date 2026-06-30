@@ -63,7 +63,25 @@ markers = [
 我们可以使用YAML文件来配置一个测试用例，然后在测试用例中读取YAML文件来执行测试。
 
 YAML文件可以自定义，本项目的格式如下：
-[待定]
+
+```yaml
+- api_name: 获取用户个人信息          # 接口名（顶层列表，一个文件可定义多个接口）
+  request:                          # 接口级公用配置
+    method: GET
+    url: /users/me
+  cases:                            # 测试场景列表（一个接口可以有多个测试场景）
+    - case_name: 成功获取用户个人信息  # 用例名
+      is_login: true                 # 是否需要登录态
+      body:                          # 请求体（可选）
+        key: value
+      validate:                      # 断言规则
+        code: 200                    # flat 断言：key = expected
+        data.token: not_empty        # 嵌套路径断言：key 含点号表示逐层取值
+```
+
+> 顶层是列表（`- api_name`），一个 YAML 文件可以定义多个接口。
+> `request` 放接口级公用配置（URL、method），`cases` 放每轮不同的数据（body、断言）。
+> 设计原则：一个 YAML 文件 = 一个 API 接口，cases 列表 = 该接口的多个测试场景。
 
 ### 2.pytest的parametrize标记
 
@@ -73,12 +91,92 @@ parametrize是pytest提供的一个标记，用于生成多个测试用例。它
 
 我们可以在测试用例中读取YAML文件，然后使用parametrize标记来生成多个测试用例。
 
-parametrize一般接受两个参数：
-1. 参数名：一个字符串，表示测试函数的参数名，可以是多个参数名，用逗号分隔
-2. 参数值：一个列表或元组，表示测试函数的参数值，每个元素都会生成一个独立的测试用例。
+parametrize接受三个参数：
+1. **参数名**：一个字符串，表示测试函数的参数名，可以是多个参数名，用逗号分隔
+2. **参数值**：一个列表或元组，每个元素都会生成一个独立的测试用例
+3. **ids**（可选）：每个用例的显示名称，不写则用 case0、case1 等序号
 
 使用方法：
-```python 
-@pytest.mark.parametrize("case", cases)
-def test_login(case): # 记得传入定义的参数名
+```python
+data = read_yaml("tests/test_users/test_01.yaml")[0]
+api_config = data['request']
+cases = data['cases']
+
+# 将 cases 列表和 pytest 参数化绑定
+@pytest.mark.parametrize("case", cases, ids=[c['case_name'] for c in cases])
+def test_login(case, set_base_url, auth_header):
+    api_client = ApiClient(set_base_url)
+    api_client.call(api_config, case, auth_header)
 ```
+
+> parametrize 是在**收集用例阶段**执行的，所以 YAML 必须在模块加载时就读好，不能写在函数里面。
+> 有 parametrize 的情况下，pytest 自动将 cases 列表的每一项，按顺序塞进对应测试函数的参数中。
+
+**parametrize 的等效原理**：
+```python
+cases = [
+    {"case_name": "成功", "validate": {"code": 200}},
+    {"case_name": "失败", "validate": {"code": 401}},
+]
+
+# parametrize 等价于手写两个函数：
+def test_me(case={"case_name": "成功", ...}):   # 第1次调用
+    ...
+def test_me(case={"case_name": "失败", ...}):   # 第2次调用
+    ...
+```
+
+## 3.执行引擎（ApiClient）
+
+### 1.设计思路
+
+测试函数里的"读 YAML - 发请求 - 跑断言"逻辑应当抽成可复用的执行引擎，放在 `base/` 目录下。
+
+```python
+# base/client.py
+import requests
+
+class ApiClient:
+    def __init__(self, base_url):
+        self.base_url = base_url
+
+    def call(self, api_config, case, headers=None):
+        if headers is None:
+            headers = {}
+        url = self.base_url + api_config['url']
+        method = api_config['method']
+        json_body = None
+        if 'body' in case:
+            json_body = case['body']
+        resp = requests.request(method, url, headers=headers, json=json_body)
+        for key, expected in case['validate'].items():
+            actual = self.deep_get(resp.json(), key)
+            if expected == 'not_empty':
+                assert actual is not None and actual != ''
+            elif expected is None:
+                assert actual is None
+            else:
+                assert actual == expected
+        return resp
+```
+
+### 2.deep_get：按点号路径取嵌套值
+
+API 返回的 JSON 往往是嵌套的（如 `{"code":200, "data":{"token":"xxx"}}`），validate 用点号路径支持跨层级取值：
+
+```python
+def deep_get(self, d: dict, key_path: str):
+    """按点号路径取嵌套值，'data.token' → d['data']['token']"""
+    val = d
+    for k in key_path.split('.'):
+        if val is None:
+            return None
+        if isinstance(val, dict):
+            val = val.get(k)
+        else:
+            raise KeyError(f"路径 {key_path} 在 {k} 处不是 dict")
+    return val
+```
+
+> 使用 `val.get(k)` 而非 `val[k]`，因为 key 可能不存在。
+> 中间节点为 `None` 时直接返回 `None`，不继续钻取，避免 `isinstance(None, dict)` 为假导致异常。
