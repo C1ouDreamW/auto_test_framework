@@ -1,0 +1,9 @@
+[tool.pytest.ini_options]
+addopts = "-vs"
+markers = [
+    "login",
+    "logout",
+]
+testpaths = [
+    "./tests",
+]

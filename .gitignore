@@ -1,4 +1,10 @@
 .venv
 .idea
-
+__pycache__/
+*.pyc
+.pytest_cache/
+report/
+logs/
+extract.yaml
 AGENTS.md
+REFERENCE_FRAMEWORK.md

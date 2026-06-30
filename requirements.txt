@@ -1,1 +1,5 @@
 datamodel-code-generator
+requests
+pytest
+allure-pytest
+pyyaml
