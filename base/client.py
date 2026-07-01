@@ -1,24 +1,14 @@
 import json
 import requests
 
+from common.assertions import AssertEngine
 from common.functions import DynamicFunctions
 
 
 class ApiClient:
     def __init__(self,base_url):
         self.base_url = base_url
-
-    def deep_get(self, d: dict, key_path: str):
-        """按点号路径取嵌套值，'data.token' → d['data']['token']"""
-        val = d
-        for k in key_path.split('.'):
-            if val is None:
-                return None
-            if isinstance(val, dict):
-                val = val.get(k)
-            else:
-                raise KeyError(f"路径 {key_path} 在 {k} 处不是 dict")
-        return val
+        self.assert_engine = AssertEngine()
 
     def call(self, api_config, case, headers=None):
         if headers is None:
@@ -37,14 +27,8 @@ class ApiClient:
         resp = requests.request(**kwargs)
 
         # 断言判断
-        for key, expected in case["validate"].items():
-            actual = self.deep_get(resp.json(), key)  # key = "data.token"
-            if expected == 'not_empty':
-                assert actual is not None and actual != ''
-            elif expected is None:
-                assert actual is None
-            else:
-                assert actual == expected
+        self.assert_engine.run(case['validate'],resp.json())
+
         return resp
 
     def replace_load(self, data):
