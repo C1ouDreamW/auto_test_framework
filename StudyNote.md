@@ -405,3 +405,120 @@ merged_headers = {**headers, **base_headers, **case_headers}
 - **步骤级** `request.header`：写 `Content-Type` 这种该接口所有场景都需要的公共头
 - **case 级** `case.header`：写 `Authorization: Bearer ${get_extract_data(token)}` 这种场景特化的头
 - **传入 headers**：供单接口测试的 `auth_header` fixture 快速注入 token
+
+## 10.配置层、日志、Allure 报告
+
+### 1.配置层（conf/）
+
+把项目根目录、文件路径、API 地址这些"可能变、到处用"的东西集中管理：
+
+| 文件 | 放什么 |
+|------|--------|
+| `conf/setting.py` | 路径常量（pathlib）、超时、日志级别 |
+| `conf/config.ini` | 会变的东西：API base_api、数据库、报告类型 |
+| `conf/config_reader.py` | 封装 `configparser`，暴露 `get(section, key)` |
+
+```python
+# conf/setting.py
+from pathlib import Path
+
+BASE_DIR = Path(__file__).parent.parent.absolute()
+
+FILE_PATH = {
+    'CONFIG': BASE_DIR / "conf" / "config.ini",
+    'LOG': BASE_DIR / "logs",
+    'EXTRACT': BASE_DIR / "extract.yaml",
+    'REPORT_TEMP': BASE_DIR / "report" / "temp",
+}
+
+API_TIMEOUT = 30
+```
+
+```ini
+# conf/config.ini
+[api]
+base_api = http://localhost:8080/api/v1
+```
+
+> `FILE_PATH` 字典是参考项目的经典设计——所有路径一个地方管，其他模块 `from conf.setting import FILE_PATH` 拿路径，永远不用手拼字符串。
+
+### 2.日志模块（common/logger.py）
+
+双 handler 输出：控制台只看 INFO 以上，文件存所有 DEBUG。按天滚动，文件名 `test.{YYYYMMDD}.log`。
+
+```python
+# common/logger.py
+import logging
+from datetime import datetime
+from conf.setting import FILE_PATH
+
+LOG_PATH = FILE_PATH['LOG']
+LOG_PATH.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_PATH / f"test.{datetime.now():%Y%m%d}.log"
+
+def get_logger(name: str = "apitest"):
+    logger = logging.getLogger(name)
+    if logger.handlers:
+        return logger
+    logger.setLevel(logging.DEBUG)
+    fmt = logging.Formatter('%(levelname)s - %(asctime)s - %(filename)s:%(lineno)d - %(message)s')
+    fh = logging.FileHandler(str(LOG_FILE), encoding='utf-8')
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(fmt)
+    logger.addHandler(fh)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(fmt)
+    logger.addHandler(ch)
+    return logger
+
+logger = get_logger()
+```
+
+> 防重复：`if logger.handlers` 确保 handler 不重复添加。模块级单例 `logger = get_logger()` 被其他模块直接 `from common.logger import logger` 使用。
+
+### 3.Allure 报告集成
+
+三个层次：
+
+**运行层** — `run.py` 生成报告并注入环境信息：
+
+```python
+pytest.main(['-v', '--alluredir=./report/temp', '--clean-alluredir'])
+shutil.copy('./environment.xml', './report/temp')  # 注入环境信息
+os.system('allure generate ./report/temp -o ./report/html --clean')
+os.system('allure open ./report/html')
+```
+
+**数据层** — `client.py` 在请求前后 attach 详情：
+
+```python
+allure.attach(f"{method} {url}", "请求接口", allure.attachment_type.TEXT)
+allure.attach(str(merged_headers), "请求头", allure.attachment_type.TEXT)
+allure.attach(resp.text, "响应体", allure.attachment_type.TEXT)
+```
+
+**标记层** — 测试文件加 Feature/Story 标签：
+
+```python
+@allure.feature("用户管理")
+@allure.story("登录后获取个人信息")
+def test_user_flow(set_base_url):
+    ...
+```
+
+### 4.allure.step 分组
+
+多步骤流程中，所有 `allure.attach` 平铺在 Test body 下分不清归属。用 `allure.step()` 嵌套分组：
+
+```python
+# process.py — 外层：步骤级
+with allure.step(step_name):
+    for case in step['cases']:
+        self.client.call(...)
+
+# client.py — 内层：用例级
+with allure.step(case_name):
+    # 请求、断言、提取逻辑
+```
+
