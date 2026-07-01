@@ -10,7 +10,6 @@ def write_extract(data:dict):
 
 def read_extract(key_path):
     data = read_yaml(EXTRACT_FILE_PATH)
-    print(data)
     return deep_get(data,key_path)
 
 def clear_extract():

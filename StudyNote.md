@@ -126,7 +126,7 @@ def test_me(case={"case_name": "失败", ...}):   # 第2次调用
     ...
 ```
 
-## 3.执行引擎（ApiClient）
+## 4.执行引擎（ApiClient）
 
 ### 1.设计思路
 
@@ -180,3 +180,228 @@ def deep_get(self, d: dict, key_path: str):
 
 > 使用 `val.get(k)` 而非 `val[k]`，因为 key 可能不存在。
 > 中间节点为 `None` 时直接返回 `None`，不继续钻取，避免 `isinstance(None, dict)` 为假导致异常。
+
+## 5.动态函数机制
+
+### 1.为什么需要
+
+YAML 是静态文本，无法自行动态生成值（时间戳、随机字符串等），更不能跨用例传数据（前一个用例的 token 给后面用）。
+
+解决办法：在 YAML 中写 `${函数名(参数)}` 占位符，运行时由 Python 反射调用对应函数，把返回值填回去。
+
+### 2.核心原理：replace_load 三步走
+
+```
+"token: ${get_extract_data(token)}"
+  │
+  ├─ 1. 字符串定位    → 找到 "${get_extract_data(token)}"
+  ├─ 2. 拆解函数名/参  → func_name="get_extract_data", func_params="token"
+  └─ 3. 反射调用       → getattr(DynamicFunctions(), "get_extract_data")("token") → "abc123"
+```
+
+- **不用正则**，用 `str.index()` + `str.count('${')` 循环定位，简单直观
+- 输入是 dict 时先 `json.dumps` 转字符串，替换完 `json.loads` 还原类型
+- 多个 `${...}` 占位符按出现次数循环处理，每次替换第一个
+
+### 3.文件结构
+
+| 文件 | 职责 |
+|------|------|
+| `common/functions.py` | `DynamicFunctions` 类，存放所有可被 YAML 调用的函数 |
+| `base/client.py` | `replace_load()` 方法，解析 `${...}` 并反射调用 |
+
+```python
+# common/functions.py
+class DynamicFunctions:
+    def random_string(self, length=8):
+        chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+        return "".join(random.choice(chars) for _ in range(int(length)))
+
+    def get_extract_data(self, key_path):
+        return read_extract(key_path)
+```
+
+```python
+# base/client.py — replace_load 核心
+def replace_load(self, data):
+    str_data = data if isinstance(data, str) else json.dumps(data, ensure_ascii=False)
+    for _ in range(str_data.count('${')):
+        start = str_data.index('$')
+        end = str_data.index('}', start)
+        ref_all = str_data[start:end + 1]
+        func_name = ref_all[2:ref_all.index('(')]
+        func_params = ref_all[ref_all.index('(') + 1:ref_all.index(')')]
+        result = getattr(DynamicFunctions(), func_name)(
+            *func_params.split(',') if func_params else ""
+        )
+        str_data = str_data.replace(ref_all, str(result))
+    return json.loads(str_data) if isinstance(data, dict) else str_data
+```
+
+> 注意：`replace_load` 的输入和输出类型永远一致——`str` 进 `str` 出，`dict` 进 `dict` 出。
+
+## 6.common 和 base 的职责区别
+
+| 目录 | 角色 | 特征 |
+|------|------|------|
+| `base/` | **执行引擎** | 知道"怎么跑"——串联请求、断言、提取的完整流程 |
+| `common/` | **工具箱** | 只做"一件事"——读 YAML、算断言、生成随机值，互不依赖 |
+
+- `base/client.py`（引擎）调用 `common/` 的各种工具完成一次测试
+- `common/` 里的模块不依赖 `base/`，可以独立测试
+- 打个比方：`base/` 是发动机，`common/` 是扳手和千斤顶
+
+## 7.断言引擎
+
+### 1.为什么从 client.py 抽出来
+
+原来的断言直接写在 `call()` 里，用 `assert` 关键字——第一个断言失败就炸了，后面的不跑。另外断言逻辑和发请求逻辑混在一起，不好维护。
+
+### 2.累加器模式
+
+```python
+# common/assertions.py
+class AssertEngine:
+    def run(self, validate_dict: dict, resp_dict: dict):
+        failed = 0
+        for key, expected in validate_dict.items():
+            actual = deep_get(resp_dict, key)
+            if not self._check(actual, expected):
+                print(f"  [断言失败] {key}: 预期={expected}, 实际={actual}")
+                failed += 1
+            else:
+                print(f"--[断言通过]--{key}")
+        if failed > 0:
+            raise AssertionError(f"{failed}/{len(validate_dict)} 条断言失败")
+```
+
+- 所有断言**全部跑完**再判断，不会中途停止
+- `_check()` 支持三种判断：`"not_empty"`（非空）、`None`（为空）、等值比较
+- `deep_get` 从 `client.py` 抽到 `common/deep_get.py`，assertions 和其他模块共用
+
+## 8.关联提取机制（extract.yaml）
+
+用来存放需要动态的提取响应体中的字段
+
+### 1.数据流
+
+```
+测试启动 → conftest.py 清空 extract.yaml
+    │
+步骤1: 登录接口
+    extract: {token: $.data.token}
+    → 写入 extract.yaml
+    │
+步骤2: 获取用户信息
+    header: Authorization: Bearer ${get_extract_data(token)}
+    → replace_load 从 extract.yaml 读回注入
+```
+
+### 2.文件结构
+
+| 文件 | 职责 |
+|------|------|
+| `common/yaml_utils.py` | YAML 读写基础工具：`read_yaml`、`append_yaml`（merge 模式）、`clear_yaml` |
+| `base/extract.py` | extract 业务封装：`write_extract`、`read_extract`、`clear_extract` |
+| `common/functions.py` | `get_extract_data(key)` — YAML 中 `${get_extract_data(token)}` 的桥接 |
+| `conftest.py` | `clear_extract_yaml` fixture（session + autouse），每次运行前清空 |
+
+### 3.append_yaml 的设计
+
+如果采用用追加模式（`a` 模式）写 extract.yaml，同一个 key 可能重复出现，导致yaml文件读取崩溃。本项目改为 **merge 模式**：
+
+```python
+def append_yaml(file_path, new_data: dict):
+    current = yaml.safe_load(f) or {}   # 读现有数据
+    current.update(new_data)            # 同 key 覆盖
+    yaml.safe_dump(current, f)          # 全量写回
+```
+
+> 同一个 key 永远只有最新值，不会有遗留，
+> 代价是每次写入都需要全量读写，extract.yaml 大了会慢（虽然一般都很小）
+
+## 9.业务场景模式
+
+用于多接口串联，顺序执行
+
+### 1.单接口 vs 业务场景
+
+| | 单接口模式 | 业务场景模式 |
+|---|---|---|
+| YAML 结构 | 一个文件 = 一个接口 + 多个场景 | 一个文件 = 多个步骤（多接口按序执行）|
+| 执行引擎 | `ApiClient.call()` — 一次调用一个请求 | `ProcessRunner.run()` — 串行执行多个步骤 |
+| token 来源 | `auth_header` fixture 统一提供 | 流程第一步登录后 extract，后续步骤通过 `${...}` 读取 |
+| 参数化 | `@parametrize` 拆成 N 个独立测试 | 多步骤作为一个整体，顺序执行 |
+
+### 2.业务场景 YAML 格式
+
+```yaml
+# 顶层是列表，每个元素是一个步骤（一个接口）
+- step_name: 用户登录
+  request:                           # 步骤级配置（公共 header）
+    method: post
+    url: /users/login
+    header:
+      Content-Type: application/json
+  cases:
+    - case_name: 登陆成功
+      json:
+        username: testuser
+        password: "123456"
+      validate:
+        code: 200
+        data.token: not_empty
+      extract:                       # 提取 token 供后续步骤使用
+        token: data.token
+
+- step_name: 获取个人信息
+  request:
+    method: get
+    url: /users/me
+  cases:
+    - case_name: 成功获取用户个人信息
+      header:                        # case 级 header（场景特化）
+        Authorization: Bearer ${get_extract_data(token)}
+      validate:
+        code: 200
+        data.username: testuser
+    - case_name: 未登录被拒
+      validate:                      # 不写 header = 不带 token
+        code: 401
+```
+
+### 3.执行引擎 ProcessRunner
+
+```python
+# base/process.py
+class ProcessRunner:
+    def __init__(self, base_url):
+        self.client = ApiClient(base_url)
+
+    def run(self, steps: list):
+        for step in steps:
+            step_name = step['step_name']
+            print(f"\n========步骤：{step_name} 开始执行========")
+            for case in step['cases']:
+                self.client.call(step['request'], case)
+```
+
+> `ProcessRunner` 不包含请求/断言/提取逻辑——全部复用 `ApiClient.call()`。它只负责**编排**：按步骤顺序遍历，把 `request` 和 `case` 喂给 `ApiClient`。
+
+### 4.header 分层合并机制
+
+一个请求的最终 header 由三层合并而来，从低到高优先级：
+
+```
+传入 headers（auth_header fixture）→ 步骤级 request.header → case 级 case.header
+     低优先级                                            高优先级
+```
+
+```python
+# base/client.py
+merged_headers = {**headers, **base_headers, **case_headers}
+```
+
+- **步骤级** `request.header`：写 `Content-Type` 这种该接口所有场景都需要的公共头
+- **case 级** `case.header`：写 `Authorization: Bearer ${get_extract_data(token)}` 这种场景特化的头
+- **传入 headers**：供单接口测试的 `auth_header` fixture 快速注入 token

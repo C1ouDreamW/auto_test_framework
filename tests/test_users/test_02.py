@@ -9,7 +9,6 @@ cases = data['cases']
 
 @pytest.mark.parametrize("case", cases,ids=[i['case_name'] for i in cases])
 @pytest.mark.login
-@pytest.mark.test
-def test_02(case,set_base_url,auth_header):
+def test_02(case,set_base_url):
     api_client = ApiClient(set_base_url)
-    api_client.call(api_config,case,auth_header)
+    api_client.call(api_config,case)

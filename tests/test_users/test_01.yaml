@@ -4,10 +4,10 @@
     url: /users/me
   cases:
     - case_name: 成功获取用户个人信息
-      is_login: true
       validate:
         code: 200
     - case_name: 未登录获取用户个人信息
-      is_login: false
+      header:
+        Authorization: null
       validate:
         code: 401

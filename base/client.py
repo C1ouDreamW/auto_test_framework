@@ -16,13 +16,29 @@ class ApiClient:
             headers = {}
         url = self.base_url + api_config['url']
         method = api_config['method']
+
+        # 动态填充headers
+        # 公共 header - request层
+        base_headers = api_config.get('header', {})
+        base_headers = self.replace_load(base_headers)
+
+        # 用例 header - case层
+        case_headers = case.get('header', {})
+        case_headers = self.replace_load(case_headers)
+
+        # 合并，case优先级最高
+        merged_headers = {**headers,**base_headers, **case_headers}
+
+
+        # 动态填充json
         if 'json' in case:
             case['json'] = self.replace_load(case['json'])
-        #发送请求
+
+        # 发送请求
         kwargs = {
             'method':method,
             'url':url,
-            'headers':headers if case['is_login'] else None,
+            'headers':merged_headers or None,
             'json':case.get('json')
         }
         resp = requests.request(**kwargs)
