@@ -16,48 +16,51 @@ class ApiClient:
         self.assert_engine = AssertEngine()
 
     def call(self, api_config, case, headers=None):
-        if headers is None:
-            headers = {}
-        url = self.base_url + api_config['url']
-        method = api_config['method']
+        case_name = case.get('case_name','未命名')
+        with allure.step(case_name):
+            if headers is None:
+                headers = {}
+            url = self.base_url + api_config['url']
+            method = api_config['method']
 
-        # 动态填充headers
-        # 公共 header - request层
-        base_headers = api_config.get('header', {})
-        base_headers = self.replace_load(base_headers)
+            # 动态填充headers
+            # 公共 header - request层
+            base_headers = api_config.get('header', {})
+            base_headers = self.replace_load(base_headers)
 
-        # 用例 header - case层
-        case_headers = case.get('header', {})
-        case_headers = self.replace_load(case_headers)
+            # 用例 header - case层
+            case_headers = case.get('header', {})
+            case_headers = self.replace_load(case_headers)
 
-        # 合并，case优先级最高
-        merged_headers = {**headers,**base_headers, **case_headers}
+            # 合并，case优先级最高
+            merged_headers = {**headers,**base_headers, **case_headers}
 
 
-        # 动态填充json
-        if 'json' in case:
-            case['json'] = self.replace_load(case['json'])
+            # 动态填充json
+            if 'json' in case:
+                case['json'] = self.replace_load(case['json'])
 
-        # 发送请求
-        kwargs = {
-            'method':method,
-            'url':url,
-            'headers':merged_headers or None,
-            'json':case.get('json')
-        }
-        logger.info(f"请求: {method} {url}")
-        allure.attach(f"{method} {url}","请求接口",allure.attachment_type.TEXT)
-        allure.attach(str(merged_headers), "请求头", allure.attachment_type.TEXT)
-        resp = requests.request(**kwargs)
-        logger.info(f"响应: {resp.status_code}")
-        allure.attach(resp.text, "响应体", allure.attachment_type.TEXT)
+            # 发送请求
+            kwargs = {
+                'method':method,
+                'url':url,
+                'headers':merged_headers or None,
+                'json':case.get('json')
+            }
 
-        # 断言判断
-        self.assert_engine.run(case['validate'],resp.json())
+            logger.info(f"请求: {method} {url}")
+            allure.attach(f"{method} {url}","请求接口",allure.attachment_type.TEXT)
+            allure.attach(str(merged_headers), "请求头", allure.attachment_type.TEXT)
+            resp = requests.request(**kwargs)
+            logger.info(f"响应: {resp.status_code}")
+            allure.attach(resp.text, "响应体", allure.attachment_type.TEXT)
 
-        if 'extract' in case:
-            extract_dict = case['extract']
-            self._extract_fields(extract_dict,resp.json())
+            # 断言判断
+            self.assert_engine.run(case['validate'],resp.json())
+
+            if 'extract' in case:
+                extract_dict = case['extract']
+                self._extract_fields(extract_dict,resp.json())
 
 
         return resp
