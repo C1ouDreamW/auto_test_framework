@@ -4,6 +4,7 @@ from common.extract import write_extract
 from common.assertions import AssertEngine
 from common.deep_get import deep_get
 from common.functions import DynamicFunctions
+from common.logger import logger
 
 
 class ApiClient:
@@ -41,7 +42,9 @@ class ApiClient:
             'headers':merged_headers or None,
             'json':case.get('json')
         }
+        logger.info(f"请求: {method} {url}")
         resp = requests.request(**kwargs)
+        logger.info(f"响应: {resp.status_code}")
 
         # 断言判断
         self.assert_engine.run(case['validate'],resp.json())

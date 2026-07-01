@@ -1,4 +1,5 @@
 from common.deep_get import deep_get
+from common.logger import logger
 
 
 class AssertEngine:
@@ -8,10 +9,10 @@ class AssertEngine:
             actual = deep_get(resp_dict,key)
             is_ok = self._check(actual,expected)
             if is_ok:
-                print(f"--[断言通过]--{key}")
+                logger.info(f"--[断言通过]-- {key}")
             else:
                 failed +=1
-                print(f"  [断言失败] {key}: 预期={expected}, 实际={actual}")
+                logger.error(f"  [断言失败] {key}: 预期={expected}, 实际={actual}")
         if failed>0:
             raise AssertionError(f"{failed}/{len(validate_dict)} 条断言失败")
 
