@@ -1,4 +1,6 @@
-import pytest,os
+import pytest
+import os
+import shutil
 """
 生成allure报告的脚本
 """
@@ -9,5 +11,6 @@ if __name__ == '__main__':
         '--alluredir=./report/temp',
         '--clean-alluredir',
     ])
-    os.system('allure generate ./report/temp -o ./report/html --clean') # 生成报告
-    os.system('allure open ./report/html') # 打开报告
+    shutil.copy('./environment.xml', './report/temp')
+    os.system('allure generate ./report/temp -o ./report/html --clean')
+    os.system('allure open ./report/html')

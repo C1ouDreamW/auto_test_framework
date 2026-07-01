@@ -1,0 +1,14 @@
+<environment>
+    <parameter>
+        <key>Base URL</key>
+        <value>http://localhost:8080/api/v1</value>
+    </parameter>
+    <parameter>
+        <key>Project</key>
+        <value>iShua API 自动化测试</value>
+    </parameter>
+    <parameter>
+        <key>Framework</key>
+        <value>pytest + YAML 数据驱动</value>
+    </parameter>
+</environment>

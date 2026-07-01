@@ -1,5 +1,8 @@
 import json
+
+import allure
 import requests
+
 from common.extract import write_extract
 from common.assertions import AssertEngine
 from common.deep_get import deep_get
@@ -43,8 +46,11 @@ class ApiClient:
             'json':case.get('json')
         }
         logger.info(f"请求: {method} {url}")
+        allure.attach(f"{method} {url}","请求接口",allure.attachment_type.TEXT)
+        allure.attach(str(merged_headers), "请求头", allure.attachment_type.TEXT)
         resp = requests.request(**kwargs)
         logger.info(f"响应: {resp.status_code}")
+        allure.attach(resp.text, "响应体", allure.attachment_type.TEXT)
 
         # 断言判断
         self.assert_engine.run(case['validate'],resp.json())
