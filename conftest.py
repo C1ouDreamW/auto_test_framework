@@ -3,12 +3,13 @@ import pytest
 import requests
 
 from common.extract import clear_extract
+from conf.config_reader import ConfigReader
 
+config_reader = ConfigReader()
 
 @pytest.fixture(scope="session")
 def set_base_url():
-    base_url = "http://localhost:8080/api/v1"
-    return base_url
+    return config_reader.get('api','base_api')
 
 @pytest.fixture(scope="session",autouse=True)
 def clear_extract_yaml():
