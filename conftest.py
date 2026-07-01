@@ -2,10 +2,17 @@
 import pytest
 import requests
 
+from common.extract import clear_extract
+
+
 @pytest.fixture(scope="session")
 def set_base_url():
     base_url = "http://localhost:8080/api/v1"
     return base_url
+
+@pytest.fixture(scope="session",autouse=True)
+def clear_extract_yaml():
+    clear_extract()
 
 @pytest.fixture(scope="session")
 def auth_header(set_base_url):

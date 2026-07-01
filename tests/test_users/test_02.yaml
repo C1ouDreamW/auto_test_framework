@@ -11,6 +11,8 @@
       validate:
         code: 200
         data.token: not_empty
+      extract:
+        token: data.token
     - case_name: 登录失败，用户名不存在
       is_login: false
       json:

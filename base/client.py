@@ -1,7 +1,8 @@
 import json
 import requests
-
+from common.extract import write_extract
 from common.assertions import AssertEngine
+from common.deep_get import deep_get
 from common.functions import DynamicFunctions
 
 
@@ -28,6 +29,11 @@ class ApiClient:
 
         # 断言判断
         self.assert_engine.run(case['validate'],resp.json())
+
+        if 'extract' in case:
+            extract_dict = case['extract']
+            self._extract_fields(extract_dict,resp.json())
+
 
         return resp
 
@@ -57,3 +63,8 @@ class ApiClient:
                 str_data = str_data.replace(ref_all, str(result))
 
         return json.loads(str_data) if isinstance(data, dict) else str_data
+
+    def _extract_fields(self, extract_map: dict, resp_body: dict):
+        for var_name, json_path in extract_map.items():
+            value = deep_get(resp_body, json_path)
+            write_extract({var_name: value})

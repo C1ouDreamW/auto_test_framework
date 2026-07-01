@@ -1,7 +1,7 @@
 import pytest
 
 from base.client import ApiClient
-from common.read_yaml import read_yaml
+from common.yaml_utils import read_yaml
 
 data = read_yaml("tests/test_users/test_02.yaml")[0]
 api_config = data['request']
