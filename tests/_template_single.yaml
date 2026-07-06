@@ -5,7 +5,8 @@
     header: {}
   cases:
     - case_name: 正常场景
-      json: {}
+      params: {}          # 用于 GET 请求的 URL query 参数
+      json: {}            # 用于 POST/PUT 请求的 JSON body
       validate:
         code: 200
         data.field: expected_value
@@ -16,3 +17,17 @@
       json: {}
       validate:
         code: 400
+
+    - case_name: 未登录场景
+      header:
+        Authorization: null
+      validate:
+        code: 401
+
+    - case_name: ${动态函数调用}
+      header:
+        X-Custom: ${get_extract_data(var_name)}
+      json:
+        field: ${random_string(8)}
+      validate:
+        code: 200

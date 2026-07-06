@@ -20,7 +20,7 @@ class ApiClient:
         with allure.step(case_name):
             if headers is None:
                 headers = {}
-            url = self.base_url + api_config['url']
+            url = self.base_url + self.replace_load(api_config['url'])
             method = api_config['method']
 
             # 动态填充headers
@@ -40,12 +40,17 @@ class ApiClient:
             if 'json' in case:
                 case['json'] = self.replace_load(case['json'])
 
+            # 动态填充params
+            if 'params' in case:
+                case['params'] = self.replace_load(case['params'])
+
             # 发送请求
             kwargs = {
                 'method':method,
                 'url':url,
                 'headers':merged_headers or None,
-                'json':case.get('json')
+                'json':case.get('json'),
+                'params':case.get('params')
             }
 
             logger.info(f"请求: {method} {url}")

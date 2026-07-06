@@ -8,7 +8,7 @@ class TestApi:
         api_client = ApiClient(set_base_url)
         api_client.call(api_config,case,auth_header)
 
-    def test_flow(self,set_base_url,flow_data):
+    def test_flow(self,set_base_url,auth_header,flow_data):
         """多接口串联流程测试"""
         process_runner = ProcessRunner(set_base_url)
-        process_runner.run(flow_data)
+        process_runner.run(flow_data, auth_header)

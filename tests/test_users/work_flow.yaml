@@ -27,5 +27,7 @@
         code: 200
         data.username: testuser
     - case_name: 未登录获取用户个人信息
+      header:
+        Authorization: null
       validate:
         code: 401

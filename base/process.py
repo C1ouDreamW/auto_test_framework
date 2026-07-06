@@ -8,7 +8,9 @@ class ProcessRunner:
     def __init__(self,base_url):
         self.client = ApiClient(base_url)
 
-    def run(self,steps:list):
+    def run(self, steps: list, auth_header=None):
+        if auth_header is None:
+            auth_header = {}
         logger.info("======== 多接口任务开始执行 ========")
         cnt = 0
         for step in steps:
@@ -18,7 +20,7 @@ class ProcessRunner:
             with allure.step(step['step_name']):
                 logger.info(f"======== 步骤{cnt}：{step_name} 开始执行 ========")
                 for case in step['cases']:
-                    self.client.call(step['request'],case)
+                    self.client.call(step['request'], case, auth_header)
 
         logger.info("======== 多接口任务执行完毕 ========")
 
