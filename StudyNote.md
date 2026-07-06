@@ -520,6 +520,7 @@ with allure.step(step_name):
 # client.py — 内层：用例级
 with allure.step(case_name):
     # 请求、断言、提取逻辑
+```
 
 ## 11. YAML 自动扫描 —— 告别手写 test.py
 
@@ -535,7 +536,8 @@ tests/test_users/
 ├── test_02.yaml
 ```
 
-test.py 的内容几乎一模一样：读 YAML → `@parametrize` → `ApiClient.call()`。每加一个接口就复制粘贴一次，烦人且容易出错。
+test.py 的内容几乎一模一样：读 YAML → `@parametrize` → `ApiClient.call()`。每加一个接口就复制粘贴一次，繁琐且容易出错。
+
 
 ### 2.方案：pytest_generate_tests hook
 
@@ -652,5 +654,5 @@ if yf.name.startswith("_"):
 ```
 
 下划线开头的 YAML 文件被跳过，用作模板。新增接口时复制模板 → 改字段 → 完成，降低上手门槛。
-```
+
 
