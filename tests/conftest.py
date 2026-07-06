@@ -12,6 +12,8 @@ def pytest_generate_tests(metafunc):
 
     # =====收集所有yaml用例信息并分类
     for yf in sorted(here.rglob("*.yaml")):
+        if yf.name.startswith("_"):
+            continue
         data = read_yaml(str(yf))
         if isinstance(data,list) and len(data) == 1  and 'cases' in data[0]:
             # 单接口测试

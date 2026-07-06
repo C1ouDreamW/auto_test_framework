@@ -1,0 +1,28 @@
+- step_name: 步骤1描述
+  request:
+    method: POST
+    url: /api/xxx
+    header:
+      Content-Type: application/json
+  cases:
+    - case_name: 步骤1场景
+      json: {}
+      validate:
+        code: 200
+      extract:
+        token: data.token
+
+- step_name: 步骤2描述
+  request:
+    method: GET
+    url: /api/yyy
+    header:
+      Content-Type: application/json
+      Authorization: Bearer ${get_extract_data(token)}
+  cases:
+    - case_name: 步骤2正常场景
+      validate:
+        code: 200
+    - case_name: 步骤2异常场景
+      validate:
+        code: 401

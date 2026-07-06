@@ -1,0 +1,18 @@
+- api_name: 接口描述（显示在报告中）
+  request:
+    method: GET
+    url: /api/xxx
+    header: {}
+  cases:
+    - case_name: 正常场景
+      json: {}
+      validate:
+        code: 200
+        data.field: expected_value
+      extract:
+        var_name: data.field
+
+    - case_name: 异常场景
+      json: {}
+      validate:
+        code: 400

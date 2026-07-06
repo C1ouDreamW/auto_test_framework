@@ -520,5 +520,137 @@ with allure.step(step_name):
 # client.py — 内层：用例级
 with allure.step(case_name):
     # 请求、断言、提取逻辑
+
+## 11. YAML 自动扫描 —— 告别手写 test.py
+
+### 1.痛点
+
+之前每新增一个接口，需要同时维护两个文件：
+
+```
+tests/test_users/
+├── test_01.py    ← 手写（模板代码，每次复制改路径）
+├── test_01.yaml  ← 手写（真正有价值的部分）
+├── test_02.py    ← 又复制一份...
+├── test_02.yaml
+```
+
+test.py 的内容几乎一模一样：读 YAML → `@parametrize` → `ApiClient.call()`。每加一个接口就复制粘贴一次，烦人且容易出错。
+
+### 2.方案：pytest_generate_tests hook
+
+利用 pytest 的 `pytest_generate_tests` hook，在**收集测试阶段**自动扫描目录下所有 `.yaml` 文件，动态注入 `parametrize` 参数。test.py 永远只需写一次。
+
+### 3.核心原理
+
+```
+pytest 启动
+  ↓
+发现 test_api.py → TestApi.test_single(..., api_config, case)  ← api_config/case 没有 fixture
+  ↓
+触发 pytest_generate_tests(metafunc)
+  ↓                            ↓
+rglob("*.yaml")           metafunc.parametrize('api_config,case', [...], ids=[...])
+  ↓                            ↓
+遍历所有 YAML，            把每一对 (api_config, case) 注入到 test_single，
+按结构分类，拆成参数对       每一个 = 一个独立测试用例
+  ↓
+生成 4 个单接口 + 1 个流程 = 5 个测试用例
+```
+
+### 4.文件结构
+
+| 文件 | 职责 |
+|------|------|
+| `tests/conftest.py` | 扫描器：`rglob("*.yaml")` → 分类（单接口/多流程）→ `metafunc.parametrize()` 注入 |
+| `tests/test_api.py` | 骨架测试：只写一次，接收 `api_config` + `case`，调用执行引擎即可 |
+| `tests/_template_single.yaml` | 单接口 YAML 模板 |
+| `tests/_template_flow.yaml` | 多接口流程 YAML 模板 |
+
+### 5.conftest.py 关键代码
+
+```python
+# tests/conftest.py
+def pytest_generate_tests(metafunc):
+    here = Path(__file__).parent
+    single_params = []
+    single_ids = []
+    flow_params = []
+    flow_ids = []
+
+    for yf in sorted(here.rglob("*.yaml")):
+        if yf.name.startswith("_"):
+            continue                            # 跳过模板文件
+        data = read_yaml(str(yf))
+
+        if isinstance(data, list) and len(data) == 1 and 'cases' in data[0]:
+            # 单接口：一个 request + 多个 cases
+            api_config = data[0]['request']
+            for case in data[0]['cases']:
+                single_params.append((api_config, case))
+                single_ids.append(case.get('case_name', '未命名'))
+
+        elif isinstance(data, list) and len(data) > 1 and 'step_name' in data[0]:
+            # 多接口流程：多个步骤
+            flow_params.append(data)
+            flow_ids.append(yf.stem)
+
+    # 注入：只对声明了对应参数名的函数生效
+    if 'api_config' in metafunc.fixturenames:
+        metafunc.parametrize('api_config,case', single_params, ids=single_ids)
+    if 'flow_data' in metafunc.fixturenames:
+        metafunc.parametrize('flow_data', flow_params, ids=flow_ids)
+```
+
+### 6.骨架测试 test_api.py
+
+```python
+# tests/test_api.py
+class TestApi:
+    def test_single(self, set_base_url, auth_header, api_config, case):
+        ApiClient(set_base_url).call(api_config, case, auth_header)
+
+    def test_flow(self, set_base_url, flow_data):
+        ProcessRunner(set_base_url).run(flow_data)
+```
+
+> 这两个函数**永远不用改**。新增接口时，只需要往目录下丢一个 YAML 文件。
+
+### 7.pytest_generate_tests 的几个关键点
+
+| 概念 | 说明 |
+|------|------|
+| `metafunc` | 元函数对象，代表 pytest 即将执行的测试函数 |
+| `metafunc.fixturenames` | 测试函数需要哪些参数（list of str） |
+| `metafunc.parametrize(name, values, ids)` | 注入参数化——和 `@pytest.mark.parametrize` 完全等价 |
+| `ids` | 用例显示名，不传就用序号，传了就显示如 `test_single[成功登录用户]` |
+
+> `pytest_generate_tests` 会在**每个测试函数**被收集时触发。所以用 `if 'api_config' in metafunc.fixturenames` 来区分要给哪个函数注入参数。
+
+### 8.改造前后对比
+
+| | 改之前 | 改之后 |
+|----|--------|--------|
+| 新增接口步骤 | 写 YAML + 手写 test.py | 只写 YAML |
+| test.py 数量 | N 个（每个接口一个） | 1 个（永远不改） |
+| YAML 和 test.py 的关联 | 硬编码文件路径 | 自动发现、自动注入 |
+| 扩展新模块 | 新目录 + 新 test.py + conftest | 新目录 + 丢 YAML 即可 |
+
+### 9.为什么 pytest 社区没有现成插件
+
+pytest 插件列表中有 `pytest-yaml`，但它只是一个 `yaml_content` fixture，功能极其有限——需要手动指定 `--yaml-file`，不会自动扫描目录，也不支持参数化。
+
+原因在于：每个人的 YAML 结构都不同（你的用 `request/cases`，参考项目用 `baseInfo/testCase`，别人的可能用 `steps/asserts`）。pytest 社区没法做一个"通用 YAML 自动化插件"来适配所有人。
+
+`pytest_generate_tests` 正是为这种"太定制化、没有通用方案"的场景设计的。
+
+### 10.扩展：模板文件机制
+
+```python
+if yf.name.startswith("_"):
+    continue
+```
+
+下划线开头的 YAML 文件被跳过，用作模板。新增接口时复制模板 → 改字段 → 完成，降低上手门槛。
 ```
 
