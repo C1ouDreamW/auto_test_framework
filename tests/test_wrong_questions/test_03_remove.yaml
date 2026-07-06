@@ -1,0 +1,13 @@
+- api_name: 从错题本移除记录
+  request:
+    method: DELETE
+    url: /wrong-questions/99999
+  cases:
+    - case_name: 移除不存在的错题记录应返回404
+      validate:
+        code: 404
+    - case_name: 未登录移除应拒绝
+      header:
+        Authorization: null
+      validate:
+        code: 401

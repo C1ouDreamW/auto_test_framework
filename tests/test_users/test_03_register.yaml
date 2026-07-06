@@ -1,0 +1,42 @@
+- api_name: 用户注册
+  request:
+    method: POST
+    url: /users/register
+  cases:
+    - case_name: 缺少必填字段应失败
+      json:
+        username: newuser001
+      validate:
+        code: 400
+    - case_name: 用户名过短应失败
+      json:
+        username: ab
+        password: "123456"
+        email: test@example.com
+        code: "123456"
+      validate:
+        code: 400
+    - case_name: 密码过短应失败
+      json:
+        username: newuser002
+        password: "123"
+        email: test@example.com
+        code: "123456"
+      validate:
+        code: 400
+    - case_name: 邮箱格式非法应失败
+      json:
+        username: newuser003
+        password: "123456"
+        email: not-an-email
+        code: "123456"
+      validate:
+        code: 400
+    - case_name: 验证码格式非法应失败
+      json:
+        username: newuser004
+        password: "123456"
+        email: test@example.com
+        code: "abc"
+      validate:
+        code: 400

@@ -1,0 +1,57 @@
+- api_name: 创建题库树节点
+  request:
+    method: POST
+    url: /bank-nodes
+  cases:
+    - case_name: 成功创建根文件夹节点
+      json:
+        parentId: null
+        nodeKind: FOLDER
+        title: 测试根文件夹
+        description: 自动化测试创建的根文件夹
+      validate:
+        code: 200
+        data: not_empty
+      extract:
+        root_node_id: data
+    - case_name: 成功创建 LEAF 节点（私有）
+      json:
+        parentId: null
+        nodeKind: LEAF
+        title: 测试题库叶子节点
+        description: 自动化测试创建的 LEAF 节点
+        isPublic: 0
+        sortNo: 0
+      validate:
+        code: 200
+        data: not_empty
+      extract:
+        leaf_node_id: data
+    - case_name: 创建公开 LEAF 节点
+      json:
+        parentId: null
+        nodeKind: LEAF
+        title: 公开题库叶子
+        description: 公开的 LEAF 节点
+        isPublic: 1
+      validate:
+        code: 200
+    - case_name: 无效节点类型应失败
+      json:
+        nodeKind: INVALID
+        title: 无效节点
+      validate:
+        code: 400
+    - case_name: 缺少必填字段应失败
+      json:
+        nodeKind: LEAF
+      validate:
+        code: 400
+    - case_name: 未登录创建应拒绝
+      header:
+        Authorization: null
+      json:
+        nodeKind: FOLDER
+        title: 匿名节点
+      validate:
+        code: 401

@@ -1,0 +1,15 @@
+- api_name: 发送注册邮箱验证码
+  request:
+    method: POST
+    url: /users/register/email-code
+  cases:
+    - case_name: 缺少必填字段应失败
+      json: {}
+      validate:
+        code: 400
+    - case_name: 邮箱格式非法应失败
+      json:
+        email: invalid-email
+        turnstileToken: test-token
+      validate:
+        code: 400

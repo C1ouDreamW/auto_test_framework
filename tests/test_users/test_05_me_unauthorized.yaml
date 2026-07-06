@@ -1,0 +1,10 @@
+- api_name: 获取当前登录用户信息（不传 Authorization）
+  request:
+    method: GET
+    url: /users/me
+  cases:
+    - case_name: 未登录获取用户信息应拒绝
+      header:
+        Authorization: null
+      validate:
+        code: 401

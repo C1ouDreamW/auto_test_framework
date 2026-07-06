@@ -1,0 +1,20 @@
+- api_name: 提交答案并获取判分结果
+  request:
+    method: POST
+    url: /practice/banks/1/questions/1/submit
+  cases:
+    - case_name: 提交单选题答案
+      json:
+        userAnswer:
+          - "A"
+      validate:
+        code: 200
+        data: not_empty
+    - case_name: 未登录提交应拒绝
+      header:
+        Authorization: null
+      json:
+        userAnswer:
+          - "A"
+      validate:
+        code: 401

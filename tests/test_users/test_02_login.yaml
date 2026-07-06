@@ -4,20 +4,17 @@
     url: /users/login
   cases:
     - case_name: 成功登录用户
-      is_login: false
       json:
         username: testuser
-        password: 123456
+        password: "123456"
       validate:
         code: 200
         data.token: not_empty
       extract:
         token: data.token
     - case_name: 登录失败，用户名不存在
-      is_login: false
       json:
         username: ${random_string(8)}
         password: ${random_string(8)}
       validate:
         code: 401
-        data.token: null

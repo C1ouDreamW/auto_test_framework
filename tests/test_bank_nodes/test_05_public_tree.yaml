@@ -1,0 +1,10 @@
+- api_name: 查询公开扁平题库树
+  request:
+    method: GET
+    url: /bank-nodes/public/tree
+  cases:
+    - case_name: 成功查询公开题库树（无需登录）
+      header:
+        Authorization: null
+      validate:
+        code: 200

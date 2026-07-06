@@ -1,0 +1,31 @@
+- api_name: 全量更新试题
+  request:
+    method: PUT
+    url: /questions/99999
+  cases:
+    - case_name: 更新不存在的试题应返回404
+      json:
+        questionType: SINGLE
+        stem: 测试题干不存在
+        optionsJson: '["A","B","C","D"]'
+        answerJson: '["A"]'
+      validate:
+        code: 404
+    - case_name: 无效题型更新不存在试题返回404
+      json:
+        questionType: INVALID_TYPE
+        stem: 测试题干
+        optionsJson: '["A","B"]'
+        answerJson: '["A"]'
+      validate:
+        code: 404
+    - case_name: 未登录更新应拒绝
+      header:
+        Authorization: null
+      json:
+        questionType: SINGLE
+        stem: 测试题干
+        optionsJson: '["A","B"]'
+        answerJson: '["A"]'
+      validate:
+        code: 401

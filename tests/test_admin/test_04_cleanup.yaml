@@ -1,0 +1,17 @@
+- api_name: 清理长时间未确认的AI导入任务
+  request:
+    method: POST
+    url: /admin/ai-import/tasks/cleanup
+  cases:
+    - case_name: 非管理员清理应被拒绝
+      json:
+        dryRun: true
+      validate:
+        code: 403
+    - case_name: 未登录清理应拒绝
+      header:
+        Authorization: null
+      json:
+        dryRun: true
+      validate:
+        code: 401

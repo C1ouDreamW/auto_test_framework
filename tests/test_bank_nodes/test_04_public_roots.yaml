@@ -1,0 +1,20 @@
+- api_name: 分页查询公开根节点
+  request:
+    method: GET
+    url: /bank-nodes/public/roots
+  cases:
+    - case_name: 成功查询公开根节点列表
+      params:
+        current: 1
+        pageSize: 10
+      validate:
+        code: 200
+        data: not_empty
+    - case_name: 未登录也能查询公开节点
+      header:
+        Authorization: null
+      params:
+        current: 1
+        pageSize: 10
+      validate:
+        code: 200

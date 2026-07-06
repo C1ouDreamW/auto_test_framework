@@ -1,0 +1,11 @@
+- api_name: 查询题库下的试题
+  request:
+    method: GET
+    url: /question-banks/99999/questions
+  cases:
+    - case_name: 查询不存在的题库应返回404
+      params:
+        current: 1
+        pageSize: 10
+      validate:
+        code: 404

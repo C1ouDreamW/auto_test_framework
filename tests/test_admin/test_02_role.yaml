@@ -1,0 +1,17 @@
+- api_name: 管理端变更用户角色
+  request:
+    method: PUT
+    url: /admin/users/1/role
+  cases:
+    - case_name: 非管理员变更角色应被拒绝
+      json:
+        role: PREMIUM
+      validate:
+        code: 403
+    - case_name: 未登录变更应拒绝
+      header:
+        Authorization: null
+      json:
+        role: USER
+      validate:
+        code: 401

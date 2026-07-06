@@ -1,0 +1,21 @@
+- api_name: 更新题库
+  request:
+    method: PUT
+    url: /question-banks/99999
+  cases:
+    - case_name: 更新不存在的题库应返回404
+      json:
+        title: 不存在的题库
+        description: test
+        isPublic: 0
+      validate:
+        code: 404
+    - case_name: 未登录更新应拒绝
+      header:
+        Authorization: null
+      json:
+        title: 未登录更新
+        description: test
+        isPublic: 0
+      validate:
+        code: 401

@@ -1,0 +1,11 @@
+- api_name: 查询 LEAF 节点下的试题列表
+  request:
+    method: GET
+    url: /bank-nodes/${get_extract_data(leaf_node_id)}/questions
+  cases:
+    - case_name: 查询节点试题列表
+      params:
+        current: 1
+        pageSize: 10
+      validate:
+        code: 200

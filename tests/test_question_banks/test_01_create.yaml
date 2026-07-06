@@ -1,0 +1,42 @@
+- api_name: 创建题库
+  request:
+    method: POST
+    url: /question-banks
+  cases:
+    - case_name: 成功创建公开题库并获取ID
+      json:
+        title: 自动化测试题库
+        description: 由自动化测试框架创建
+        isPublic: 1
+      validate:
+        code: 200
+        data: not_empty
+      extract:
+        bank_id: data
+    - case_name: 成功创建私有题库
+      json:
+        title: 私有测试题库
+        description: 私有题库
+        isPublic: 0
+      validate:
+        code: 200
+        data: not_empty
+    - case_name: 缺少必填字段应失败
+      json:
+        description: 没有标题
+      validate:
+        code: 400
+    - case_name: 标题过长应失败
+      json:
+        title: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        isPublic: 0
+      validate:
+        code: 400
+    - case_name: 未登录创建应拒绝
+      header:
+        Authorization: null
+      json:
+        title: 匿名题库
+        isPublic: 1
+      validate:
+        code: 401

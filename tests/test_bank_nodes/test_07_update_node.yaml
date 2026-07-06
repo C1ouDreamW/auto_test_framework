@@ -1,0 +1,17 @@
+- api_name: 更新题库树节点
+  request:
+    method: PUT
+    url: /bank-nodes/${get_extract_data(root_node_id)}
+  cases:
+    - case_name: 成功更新节点标题
+      json:
+        title: 更新后的根文件夹
+      validate:
+        code: 200
+    - case_name: 未登录更新应拒绝
+      header:
+        Authorization: null
+      json:
+        title: 匿名更新
+      validate:
+        code: 401

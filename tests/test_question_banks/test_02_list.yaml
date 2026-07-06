@@ -1,0 +1,38 @@
+- api_name: 分页查询当前用户题库列表
+  request:
+    method: GET
+    url: /question-banks
+  cases:
+    - case_name: 成功查询题库列表
+      params:
+        current: 1
+        pageSize: 10
+      validate:
+        code: 200
+        data.records: not_empty
+    - case_name: 分页查询第2页
+      params:
+        current: 2
+        pageSize: 5
+      validate:
+        code: 200
+    - case_name: 页码为0应失败
+      params:
+        current: 0
+        pageSize: 10
+      validate:
+        code: 400
+    - case_name: 每页条数过大应失败
+      params:
+        current: 1
+        pageSize: 200
+      validate:
+        code: 400
+    - case_name: 未登录查询应拒绝
+      header:
+        Authorization: null
+      params:
+        current: 1
+        pageSize: 10
+      validate:
+        code: 401

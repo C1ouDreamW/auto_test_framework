@@ -1,0 +1,19 @@
+- api_name: 管理端分页查询用户
+  request:
+    method: GET
+    url: /admin/users
+  cases:
+    - case_name: 非管理员查询应被拒绝
+      json:
+        current: 1
+        pageSize: 10
+      validate:
+        code: 403
+    - case_name: 未登录查询应拒绝
+      header:
+        Authorization: null
+      json:
+        current: 1
+        pageSize: 10
+      validate:
+        code: 401

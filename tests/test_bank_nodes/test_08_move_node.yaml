@@ -1,0 +1,17 @@
+- api_name: 移动题库树节点
+  request:
+    method: PATCH
+    url: /bank-nodes/${get_extract_data(root_node_id)}/move
+  cases:
+    - case_name: 移动节点到根
+      json:
+        newParentId: null
+        newSortNo: 0
+      validate:
+        code: 200
+    - case_name: 移动到不存在的父节点应返回404
+      json:
+        newParentId: 99999
+        newSortNo: 0
+      validate:
+        code: 404

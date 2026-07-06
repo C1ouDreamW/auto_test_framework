@@ -1,0 +1,13 @@
+- api_name: AI导入任务统计看板
+  request:
+    method: GET
+    url: /admin/ai-import/stats
+  cases:
+    - case_name: 非管理员查看统计应被拒绝
+      validate:
+        code: 403
+    - case_name: 未登录查看应拒绝
+      header:
+        Authorization: null
+      validate:
+        code: 401

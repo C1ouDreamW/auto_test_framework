@@ -1,0 +1,20 @@
+- api_name: 分页查询当前用户错题本
+  request:
+    method: GET
+    url: /wrong-questions
+  cases:
+    - case_name: 成功查询错题本列表
+      params:
+        current: 1
+        pageSize: 10
+      validate:
+        code: 200
+        data: not_empty
+    - case_name: 未登录查询应拒绝
+      header:
+        Authorization: null
+      params:
+        current: 1
+        pageSize: 10
+      validate:
+        code: 401

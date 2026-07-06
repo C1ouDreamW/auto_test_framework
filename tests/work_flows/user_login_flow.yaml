@@ -1,0 +1,28 @@
+- step_name: 登录验证
+  request:
+    method: POST
+    url: /users/login
+    header:
+      Content-Type: application/json
+  cases:
+    - case_name: 登录获取token
+      json:
+        username: testuser
+        password: "123456"
+      validate:
+        code: 200
+      extract:
+        token: data.token
+
+- step_name: 使用token获取个人信息
+  request:
+    method: GET
+    url: /users/me
+    header:
+      Content-Type: application/json
+      Authorization: Bearer ${get_extract_data(token)}
+  cases:
+    - case_name: 登录后获取信息成功
+      validate:
+        code: 200
+        data.username: testuser

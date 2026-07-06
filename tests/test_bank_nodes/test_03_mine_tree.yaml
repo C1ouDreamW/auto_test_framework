@@ -1,0 +1,14 @@
+- api_name: 查询当前用户扁平题库树
+  request:
+    method: GET
+    url: /bank-nodes/mine/tree
+  cases:
+    - case_name: 成功查询我的题库树
+      validate:
+        code: 200
+        data: not_empty
+    - case_name: 限定子树根节点查询
+      params:
+        rootId: 1
+      validate:
+        code: 200

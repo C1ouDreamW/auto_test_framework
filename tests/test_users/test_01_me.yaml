@@ -6,7 +6,8 @@
     - case_name: 成功获取用户个人信息
       validate:
         code: 200
-    - case_name: 未登录获取用户个人信息
+        data: not_empty
+    - case_name: 未登录获取用户个人信息应拒绝
       header:
         Authorization: null
       validate:

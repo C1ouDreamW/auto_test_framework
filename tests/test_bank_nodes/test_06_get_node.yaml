@@ -1,0 +1,9 @@
+- api_name: 获取节点详情
+  request:
+    method: GET
+    url: /bank-nodes/${get_extract_data(root_node_id)}
+  cases:
+    - case_name: 查询创建的根文件夹节点
+      validate:
+        code: 200
+        data: not_empty

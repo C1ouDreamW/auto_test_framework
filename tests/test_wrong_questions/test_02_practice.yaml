@@ -1,0 +1,16 @@
+- api_name: 从错题本中刷题
+  request:
+    method: GET
+    url: /wrong-questions/practice
+  cases:
+    - case_name: 获取错题刷题列表
+      params:
+        current: 1
+        pageSize: 10
+      validate:
+        code: 200
+    - case_name: 未登录查询应拒绝
+      header:
+        Authorization: null
+      validate:
+        code: 401

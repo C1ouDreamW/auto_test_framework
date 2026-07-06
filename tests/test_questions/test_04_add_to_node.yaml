@@ -1,0 +1,59 @@
+- api_name: 向 LEAF 节点添加试题
+  request:
+    method: POST
+    url: /bank-nodes/${get_extract_data(leaf_node_id)}/questions
+  cases:
+    - case_name: 成功添加单选题
+      json:
+        questionType: SINGLE
+        stem: TCP协议属于OSI模型的哪一层？
+        optionsJson: '["应用层","传输层","网络层","数据链路层"]'
+        answerJson: '["B"]'
+        analysis: TCP是传输层协议
+        sortNo: 1
+      validate:
+        code: 200
+        data: not_empty
+      extract:
+        question_id: data
+    - case_name: 成功添加多选题
+      json:
+        questionType: MULTI
+        stem: 以下哪些属于传输层协议？
+        optionsJson: '["TCP","UDP","IP","ICMP"]'
+        answerJson: '["A","B"]'
+        analysis: TCP和UDP是传输层协议
+        sortNo: 2
+      validate:
+        code: 200
+        data: not_empty
+    - case_name: 成功添加判断题
+      json:
+        questionType: JUDGE
+        stem: HTTP协议默认使用80端口。
+        optionsJson: '["正确","错误"]'
+        answerJson: '["T"]'
+        analysis: HTTP默认端口为80
+        sortNo: 3
+      validate:
+        code: 200
+    - case_name: 成功添加简答题
+      json:
+        questionType: SHORT_ANSWER
+        stem: 请简述TCP三次握手的过程。
+        optionsJson: '[]'
+        answerJson: '["客户端发送SYN","服务端回复SYN+ACK","客户端发送ACK确认"]'
+        analysis: 三次握手建立可靠连接
+        sortNo: 4
+      validate:
+        code: 200
+    - case_name: 未登录添加应拒绝
+      header:
+        Authorization: null
+      json:
+        questionType: SINGLE
+        stem: 匿名试题
+        optionsJson: '["A","B"]'
+        answerJson: '["A"]'
+      validate:
+        code: 401

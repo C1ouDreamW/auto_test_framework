@@ -1,0 +1,13 @@
+- api_name: 根据ID获取试题
+  request:
+    method: GET
+    url: /questions/99999
+  cases:
+    - case_name: 查询不存在的试题应返回404
+      validate:
+        code: 404
+    - case_name: 未登录查询应拒绝
+      header:
+        Authorization: null
+      validate:
+        code: 401

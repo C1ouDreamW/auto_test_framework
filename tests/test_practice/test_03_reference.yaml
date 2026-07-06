@@ -1,0 +1,10 @@
+- api_name: 查看简答题参考答案
+  request:
+    method: GET
+    url: /practice/banks/1/questions/1/reference
+  cases:
+    - case_name: 未登录查看参考答案应拒绝
+      header:
+        Authorization: null
+      validate:
+        code: 401

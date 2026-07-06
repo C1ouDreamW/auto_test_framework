@@ -1,0 +1,251 @@
+- step_name: 创建题库
+  request:
+    method: POST
+    url: /question-banks
+    header:
+      Content-Type: application/json
+  cases:
+    - case_name: 创建测试题库
+      json:
+        title: E2E测试题库
+        description: 端到端自动化测试
+        isPublic: 1
+      validate:
+        code: 200
+        data: not_empty
+      extract:
+        bank_id: data
+
+- step_name: 创建根文件夹节点
+  request:
+    method: POST
+    url: /bank-nodes
+    header:
+      Content-Type: application/json
+  cases:
+    - case_name: 创建文件夹
+      json:
+        parentId: null
+        nodeKind: FOLDER
+        title: E2E根文件夹
+      validate:
+        code: 200
+      extract:
+        folder_id: data
+
+- step_name: 创建 LEAF 节点
+  request:
+    method: POST
+    url: /bank-nodes
+    header:
+      Content-Type: application/json
+  cases:
+    - case_name: 在文件夹下创建叶子节点
+      json:
+        parentId: ${get_extract_data(folder_id)}
+        nodeKind: LEAF
+        title: E2E叶子节点
+        isPublic: 0
+        sortNo: 0
+      validate:
+        code: 200
+      extract:
+        leaf_id: data
+
+- step_name: 向 LEAF 节点添加单选题
+  request:
+    method: POST
+    url: /bank-nodes/${get_extract_data(leaf_id)}/questions
+    header:
+      Content-Type: application/json
+  cases:
+    - case_name: 添加单选题
+      json:
+        questionType: SINGLE
+        stem: 端到端测试：1+1等于几？
+        optionsJson: '["1","2","3","4"]'
+        answerJson: '["B"]'
+        analysis: 基础数学
+        sortNo: 1
+      validate:
+        code: 200
+      extract:
+        q1_id: data
+
+- step_name: 向 LEAF 节点添加多选题
+  request:
+    method: POST
+    url: /bank-nodes/${get_extract_data(leaf_id)}/questions
+    header:
+      Content-Type: application/json
+  cases:
+    - case_name: 添加多选题
+      json:
+        questionType: MULTI
+        stem: 端到端测试：以下哪些是质数？
+        optionsJson: '["2","4","7","9"]'
+        answerJson: '["A","C"]'
+        analysis: 2和7是质数
+        sortNo: 2
+      validate:
+        code: 200
+      extract:
+        q2_id: data
+
+- step_name: 向 LEAF 节点添加判断题
+  request:
+    method: POST
+    url: /bank-nodes/${get_extract_data(leaf_id)}/questions
+    header:
+      Content-Type: application/json
+  cases:
+    - case_name: 添加判断题
+      json:
+        questionType: JUDGE
+        stem: 端到端测试：Python是一种编译型语言。
+        optionsJson: '["正确","错误"]'
+        answerJson: '["F"]'
+        analysis: Python是解释型语言
+        sortNo: 3
+      validate:
+        code: 200
+      extract:
+        q3_id: data
+
+- step_name: 查询节点下的试题
+  request:
+    method: GET
+    url: /bank-nodes/${get_extract_data(leaf_id)}/questions
+    header:
+      Content-Type: application/json
+  cases:
+    - case_name: 验证试题已入库
+      params:
+        current: 1
+        pageSize: 20
+      validate:
+        code: 200
+        data.total: 3
+
+- step_name: 根据ID获取试题详情
+  request:
+    method: GET
+    url: /questions/${get_extract_data(q1_id)}
+  cases:
+    - case_name: 验证试题内容正确
+      validate:
+        code: 200
+        data.stem: 端到端测试：1+1等于几？
+        data.questionType: SINGLE
+
+- step_name: 更新试题
+  request:
+    method: PUT
+    url: /questions/${get_extract_data(q1_id)}
+    header:
+      Content-Type: application/json
+  cases:
+    - case_name: 更新试题题干
+      json:
+        questionType: SINGLE
+        stem: 端到端测试：1+2等于几？（已更新）
+        optionsJson: '["2","3","4","5"]'
+        answerJson: '["B"]'
+      validate:
+        code: 200
+
+- step_name: 刷题：获取试题列表（不含答案）
+  request:
+    method: GET
+    url: /practice/banks/${get_extract_data(leaf_id)}/questions
+  cases:
+    - case_name: 获取刷题列表
+      validate:
+        code: 200
+        data: not_empty
+
+- step_name: 刷题：提交答案
+  request:
+    method: POST
+    url: /practice/banks/${get_extract_data(leaf_id)}/questions/${get_extract_data(q1_id)}/submit
+    header:
+      Content-Type: application/json
+  cases:
+    - case_name: 提交单选题答案（选对）
+      json:
+        userAnswer:
+          - "B"
+      validate:
+        code: 200
+        data.correct: true
+    - case_name: 提交单选题答案（选错）
+      json:
+        userAnswer:
+          - "A"
+      validate:
+        code: 200
+        data.correct: false
+
+- step_name: 刷题：提交判断题答案(错)
+  request:
+    method: POST
+    url: /practice/banks/${get_extract_data(leaf_id)}/questions/${get_extract_data(q3_id)}/submit
+    header:
+      Content-Type: application/json
+  cases:
+    - case_name: 判断题答错
+      json:
+        userAnswer:
+          - "T"
+      validate:
+        code: 200
+        data.correct: false
+
+- step_name: 验证错题本
+  request:
+    method: GET
+    url: /wrong-questions
+  cases:
+    - case_name: 查询错题本应有错题记录
+      params:
+        current: 1
+        pageSize: 10
+      validate:
+        code: 200
+        data: not_empty
+
+- step_name: 删除试题
+  request:
+    method: DELETE
+    url: /questions/${get_extract_data(q1_id)}
+  cases:
+    - case_name: 删除试题成功
+      validate:
+        code: 200
+
+- step_name: 删除 LEAF 节点
+  request:
+    method: DELETE
+    url: /bank-nodes/${get_extract_data(leaf_id)}
+  cases:
+    - case_name: 删除叶子节点成功
+      validate:
+        code: 200
+
+- step_name: 删除根文件夹节点
+  request:
+    method: DELETE
+    url: /bank-nodes/${get_extract_data(folder_id)}
+  cases:
+    - case_name: 删除文件夹节点成功
+      validate:
+        code: 200
+
+- step_name: 删除题库
+  request:
+    method: DELETE
+    url: /question-banks/${get_extract_data(bank_id)}
+  cases:
+    - case_name: 删除题库成功
+      validate:
+        code: 200
