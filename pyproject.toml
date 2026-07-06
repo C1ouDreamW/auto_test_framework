@@ -1,8 +1,11 @@
 [tool.pytest.ini_options]
 addopts = ""
 markers = [
-    "login",
-    "test"
+    "smoke: 冒烟测试——核心正向流程",
+    "regression: 回归测试",
+    "p0: 优先级P0——阻塞级",
+    "p1: 优先级P1——重要",
+    "p2: 优先级P2——一般",
 ]
 testpaths = [
     "./tests",

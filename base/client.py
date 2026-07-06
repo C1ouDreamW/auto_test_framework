@@ -15,8 +15,13 @@ class ApiClient:
         self.base_url = base_url
         self.assert_engine = AssertEngine()
 
-    def call(self, api_config, case, headers=None):
+    def call(self, api_config, case, headers=None, epic=None, feature=None, story=None):
         case_name = case.get('case_name','未命名')
+
+        allure.dynamic.epic(epic)
+        allure.dynamic.feature(feature)
+        allure.dynamic.story(story or case_name)
+
         with allure.step(case_name):
             if headers is None:
                 headers = {}

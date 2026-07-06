@@ -8,19 +8,25 @@ class ProcessRunner:
     def __init__(self,base_url):
         self.client = ApiClient(base_url)
 
-    def run(self, steps: list, auth_header=None):
+    def run(self, steps: list, auth_header=None, epic=None, feature=None):
         if auth_header is None:
             auth_header = {}
+
+        allure.dynamic.epic(epic)
+        allure.dynamic.feature(feature)
+
         logger.info("======== 多接口任务开始执行 ========")
         cnt = 0
         for step in steps:
 
             cnt += 1
             step_name = step['step_name']
+            story = step.get('story', step_name)
             with allure.step(step['step_name']):
+                allure.dynamic.story(story)
                 logger.info(f"======== 步骤{cnt}：{step_name} 开始执行 ========")
                 for case in step['cases']:
-                    self.client.call(step['request'], case, auth_header)
+                    self.client.call(step['request'], case, auth_header, epic, feature, story)
 
         logger.info("======== 多接口任务执行完毕 ========")
 
